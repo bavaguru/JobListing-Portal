@@ -154,17 +154,26 @@ async function preloadJobSeekerForm() {
       education: document.getElementById("js_education").value || null,
     };
 
-    // Determine create vs update
-    const exists = (await fetch("/profiles/jobseeker/me", { credentials: "same-origin" })).ok;
-    const method = exists ? "PUT" : "POST";
-    const endpoint = exists ? "/profiles/jobseeker" : "/profiles/jobseeker";
-
-    const res2 = await fetch(endpoint, {
-      method,
+    // Update-first flow (robust against auth redirects & stale existence checks):
+    // - Try PUT
+    // - If 404 "Profile not found", fallback to POST
+    let res2 = await fetch("/profiles/jobseeker", {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
       body: JSON.stringify(payload),
     });
+    if (!res2.ok) {
+      const msg = await parseError(res2);
+      if (res2.status === 404 && msg.toLowerCase().includes("profile not found")) {
+        res2 = await fetch("/profiles/jobseeker", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify(payload),
+        });
+      }
+    }
     if (!res2.ok) {
       show(errEl, await parseError(res2));
       return;
@@ -203,17 +212,24 @@ async function preloadEmployerForm() {
       contact_email: document.getElementById("em_contact_email").value || null,
     };
 
-    // Determine create vs update
-    const exists = (await fetch("/profiles/employer/me", { credentials: "same-origin" })).ok;
-    const method = exists ? "PUT" : "POST";
-    const endpoint = "/profiles/employer";
-
-    const res2 = await fetch(endpoint, {
-      method,
+    // Update-first flow (robust against auth redirects & stale existence checks)
+    let res2 = await fetch("/profiles/employer", {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
       body: JSON.stringify(payload),
     });
+    if (!res2.ok) {
+      const msg = await parseError(res2);
+      if (res2.status === 404 && msg.toLowerCase().includes("profile not found")) {
+        res2 = await fetch("/profiles/employer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify(payload),
+        });
+      }
+    }
     if (!res2.ok) {
       show(errEl, await parseError(res2));
       return;
@@ -229,5 +245,32 @@ loadEmployerProfile();
 bindResumeUpload();
 preloadJobSeekerForm();
 preloadEmployerForm();
+
+// Floating theme toggle for profile pages
+(function initProfileThemeToggle() {
+  // These pages do not have the dashboard navbar; mount a floating toggle
+  const saved = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'theme-toggle theme-toggle--floating';
+  btn.setAttribute('aria-label', 'Toggle dark mode');
+  const setBtnState = () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    btn.setAttribute('aria-pressed', String(isDark));
+    btn.innerHTML = `${isDark ? '🌙' : '☀️'} <span>${isDark ? 'Dark' : 'Light'}</span>`;
+  };
+  setBtnState();
+  btn.addEventListener('click', () => {
+    const next = (document.documentElement.getAttribute('data-theme') === 'dark') ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    setBtnState();
+  });
+  document.body.appendChild(btn);
+})();
 
 

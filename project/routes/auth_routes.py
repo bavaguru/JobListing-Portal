@@ -33,7 +33,10 @@ router = APIRouter()
 # AUTHENTICATION LOGIC
 # -------------------------
 
-@router.post("/auth/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
+# -------------------------
+# API endpoints
+# -------------------------
+@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
 async def register_user(payload: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
     """Registers a new user and hashes their password."""
     user = User(
@@ -49,9 +52,11 @@ async def register_user(payload: UserCreate, db: Annotated[AsyncSession, Depends
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered.")
     await db.refresh(user)
-    return user
+    # Return plain dict to avoid response validation issues if ORM serialization isn't enabled.
+    return UserPublic.model_validate(user).model_dump()
 
-@router.post("/auth/login", response_model=TokenResponse)
+
+@router.post("/auth/login")
 async def login_user(
     payload: UserLogin, 
     db: Annotated[AsyncSession, Depends(get_db)], 
@@ -71,13 +76,22 @@ async def login_user(
 # EMPLOYER: JOB MANAGEMENT
 # -------------------------
 
-@router.get("/post-job", response_class=HTMLResponse)
-async def post_job_page(
-    request: Request, 
-    user: Annotated[User, Depends(require_role("employer"))]
-):
-    """Displays the professional job creation form."""
-    return templates.TemplateResponse("post_job.html", {"request": request, "email": user.email})
+@router.get("/auth/me")
+async def me(user: Annotated[User, Depends(get_current_user)]):
+    """
+    Protected endpoint returning the current user.
+    """
+    return UserPublic.model_validate(user).model_dump()
+
+
+@router.post("/auth/logout")
+async def api_logout(response: Response):
+    """
+    Stateless JWT logout (server can't revoke without a blacklist).
+    For UI usage we clear the auth cookie, effectively logging out the browser session.
+    """
+    clear_auth_cookie(response)
+    return {"detail": "Logged out."}
 
 @router.post("/jobs/submit")
 async def handle_post_job(
