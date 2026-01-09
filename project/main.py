@@ -1,11 +1,9 @@
-import os
-<<<<<<< HEAD
 from contextlib import asynccontextmanager
-from typing import Optional
-
-=======
+from typing import Optional, List, Dict, Any  # Added Optional here
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, Query
+from contextlib import asynccontextmanager
+import os
 import logging
->>>>>>> f853db40a4c8f40123551c026cec268c72c93c2a
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, Query
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -36,9 +34,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Job Listing Portal", lifespan=lifespan)
 
-<<<<<<< HEAD
-# Setup Static Files
-=======
 logger = logging.getLogger("job_portal")
 
 @app.exception_handler(ResponseValidationError)
@@ -68,7 +63,6 @@ async def response_validation_exception_handler(request, exc: ResponseValidation
         },
     )
 
->>>>>>> f853db40a4c8f40123551c026cec268c72c93c2a
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
