@@ -219,4 +219,4 @@ pip install -r requirements.txt
 
 ---
 
-For support or to report issues, please contact [your-email@example.com] or open an issue in the project repository.
+For support or to report issues, please contact [gurubava1@example.com] or open an issue in the project repository.
